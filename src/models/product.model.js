@@ -5,10 +5,10 @@ var productSchema = mongoose.Schema({
     description:{"type":String,required:true},
     sku:{"type":String,required:true},
     stockquantity:{"type":Number,required:true},
-    regularrprice:{"type":Number,required:true},
+    regularprice:{"type":Number,required:true},
     saleprice:{"type":Number,required:true},
     tags:{"type":String,required:true},
-    image:{"type":String,required:true}
+    image:{"type":[],required:true}
 
 },{ timestamps: true })
 export default mongoose.model("product",productSchema)
