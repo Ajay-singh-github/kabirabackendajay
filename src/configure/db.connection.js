@@ -2,8 +2,8 @@ import mongoose from "mongoose";
 
 const pool = () => {
     mongoose.Promise = global.Promise;
-
-    const uri = "mongodb://127.0.0.1:27017/backendforkabira"; // Force IPv4
+    // mongodb+srv://admin:ADMIN@123@cluster0.csatt.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0
+    const uri = "mongodb+srv://admin:Admin123@cluster0.csatt.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0"; // Force IPv4
     const options = {
         useNewUrlParser: true,    // Nai URL parsing engine use karne ke liye.
         useUnifiedTopology: true, // Nai server discovery and monitoring engine ke liye.

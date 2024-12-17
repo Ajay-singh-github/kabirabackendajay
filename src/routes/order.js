@@ -5,11 +5,11 @@ import verifyTokenAndRole from '../middlewares/auth.middleware.js';
 const router = express.Router();
 
 // Add/Update address for an order
-router.post('/add_address_for_order', async (req, res) => {
+router.post('/add_order', async (req, res) => {
   try {
-    const { userid , paymentid , items , totalamount , orderstatus ,} = req.body;
+    const { userid , items , totalamount , orderstatus ,shippingid} = req.body;
 
-    if (!userid || !paymentid || !totalamount || !orderstatus) {
+    if (!userid  || !totalamount || !orderstatus) {
       return res.status(400).json({ status: false, message: "all fields are required." });
     }
     
@@ -19,16 +19,24 @@ router.post('/add_address_for_order', async (req, res) => {
         items:items,
         totalamount:totalamount,
         orderstatus:orderstatus,
-        paymentid:paymentid
+        shippingid:shippingid
+        // paymentid:paymentid
       });
 
       const savedOrder = await newOrder.save();
+      const Amount = items.reduce((total, item) => {
+        return total + item.quantity * item.saleprice;
+      }, 0);
+
+      console.log("AMOUNT:",Amount)
       if (savedOrder) {
         return res.status(200).json({
           status: true,
           data:savedOrder,
+          totalAmount:Amount,
           message: 'Address saved and order created successfully!',
         });
+
       }
 
       return res.status(500).json({
