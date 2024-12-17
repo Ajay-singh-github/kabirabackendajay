@@ -52,4 +52,20 @@ router.post("/add_product_in_cart", async (req, res) => {
 });
 
 
+router.delete("/remove-cart/:userId", async (req, res) => {
+  const { userid } = req.params;
+
+  try {
+    const result = await Cart.deleteMany({ "userid":userid });
+    if (result.deletedCount > 0) {
+      res.status(200).json({ message: "Cart items removed successfully" });
+    } else {
+      res.status(404).json({ message: "No cart items found for deletion" });
+    }
+  } catch (error) {
+    res.status(500).json({ message: "Server error", error });
+  }
+});
+
+
 export default router;
