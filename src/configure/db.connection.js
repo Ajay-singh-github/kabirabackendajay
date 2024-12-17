@@ -1,13 +1,19 @@
 import mongoose from "mongoose";
-var pool =()=>{
+
+const pool = () => {
     mongoose.Promise = global.Promise;
 
-    var options={}
-    // mongodb+srv://admin:ADMIN@123@cluster0.csatt.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0
-    mongoose.connect(`mongodb+srv://admin:Admin123@cluster0.csatt.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0`,options);
+    const uri = "mongodb://127.0.0.1:27017/backendforkabira"; // Force IPv4
+    const options = {
+        useNewUrlParser: true,    // Nai URL parsing engine use karne ke liye.
+        useUnifiedTopology: true, // Nai server discovery and monitoring engine ke liye.
+        serverSelectionTimeoutMS: 10000, // Timeout after 10 seconds
+    };
 
-    mongoose.connection.once("open",()=>console.log("mongodb running")).on("error",(err)=>console.log(err));
-
+    mongoose
+        .connect(uri, options)
+        .then(() => console.log("MongoDB connected successfully"))
+        .catch((err) => console.error("MongoDB connection error:", err));
 };
 
 export default pool;

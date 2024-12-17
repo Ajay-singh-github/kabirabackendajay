@@ -7,7 +7,7 @@ const router = express.Router();
 // Add/Update address for an order
 router.post('/add_address_for_order', async (req, res) => {
   try {
-    const { userid , paymentid , items , totalamount , orderstatus } = req.body;
+    const { userid , paymentid , items , totalamount , orderstatus ,} = req.body;
 
     if (!userid || !paymentid || !totalamount || !orderstatus) {
       return res.status(400).json({ status: false, message: "all fields are required." });
@@ -16,10 +16,10 @@ router.post('/add_address_for_order', async (req, res) => {
     
       const newOrder = new Order({
         userid: userid,
-        productid:productid,
         items:items,
         totalamount:totalamount,
-        orderstatus:orderstatus
+        orderstatus:orderstatus,
+        paymentid:paymentid
       });
 
       const savedOrder = await newOrder.save();
