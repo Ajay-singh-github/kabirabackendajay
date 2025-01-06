@@ -25,7 +25,7 @@ router.post('/add_order', async (req, res) => {
 
       const savedOrder = await newOrder.save();
       const Amount = items.reduce((total, item) => {
-        return total + item.quantity * item.saleprice;
+        return total + (item.quantity) * (item.saleprice);
       }, 0);
 
       console.log("AMOUNT:",Amount)
@@ -133,6 +133,28 @@ router.post('/razorpay', async (req, res) => {
       status: false,
       error: error.message,
     });
+  }
+});
+
+
+router.get("/orders/:userId", async (req, res) => {
+  const { userId } = req.params;
+
+  try {
+    const userOrders = await Order.find({ "userid": userId })
+    .populate("shippingid", "address");
+    if (userOrders.length === 0) {
+      return res.status(404).json({ message: "No orders found for this user." ,status:false});
+    }
+
+    res.status(200).json({
+      totalOrders: userOrders.length,
+      orders: userOrders,
+      status:true
+    });
+  } catch (error) {
+    console.error("Error fetching orders:", error);
+    res.status(500).json({ message: "An error occurred while fetching orders." ,status:false});
   }
 });
 
