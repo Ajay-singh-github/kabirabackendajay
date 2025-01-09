@@ -1,34 +1,45 @@
 import express from 'express';
 import Order from "../models/order.model.js";
+import User from "../models/user.model.js";
 import verifyTokenAndRole from '../middlewares/auth.middleware.js';
-
+import mongoose from "mongoose";
 const router = express.Router();
 
-// Add/Update address for an order
 router.post('/add_order', async (req, res) => {
   try {
-    const { userid , items , totalamount , orderstatus ,shippingid} = req.body;
+    const { userid , items , totalamount , orderstatus ,shippingid,paymentid} = req.body;
 
     if (!userid  || !totalamount || !orderstatus) {
       return res.status(400).json({ status: false, message: "all fields are required." });
     }
     
+    const Amount = items.reduce((total, item) => {
+      return total + (item.quantity) * (item.saleprice);
+    }, 0);
+
     
+
+    if (totalamount !== Amount) {
+      return res.status(400).json({
+        status: false,
+        data: [],
+        message: 'Total Amount is not valid. Something went wrong.',
+      });
+    }
+
+    console.log("AMOUNT:",Amount)
+
       const newOrder = new Order({
         userid: userid,
         items:items,
         totalamount:totalamount,
         orderstatus:orderstatus,
-        shippingid:shippingid
-        // paymentid:paymentid
+        shippingid:shippingid,
+        paymentid:paymentid
       });
 
       const savedOrder = await newOrder.save();
-      const Amount = items.reduce((total, item) => {
-        return total + (item.quantity) * (item.saleprice);
-      }, 0);
-
-      console.log("AMOUNT:",Amount)
+      
       if (savedOrder) {
         return res.status(200).json({
           status: true,
@@ -54,18 +65,21 @@ router.post('/add_order', async (req, res) => {
   }
 });
 
-
 router.get('/total-orders',verifyTokenAndRole(["admin"]), async (req, res) => {
   try {
-    // Count total orders
-    const totalOrders = await Order.countDocuments();
-
+   
+    const totalOrdersCount = await Order.countDocuments();
+    
+    
+    
     res.status(200).json({
       status: true,
       message: "Total orders calculated successfully",
-      totalOrders: totalOrders
+      totalOrders: totalOrdersCount
+     
     });
   } catch (error) {
+    console.log("DDDDDDDDDDDDD:",error)
     res.status(500).json({
       status: false,
       message: "Error calculating total orders",
@@ -75,12 +89,34 @@ router.get('/total-orders',verifyTokenAndRole(["admin"]), async (req, res) => {
 });
 
 
-// Handle cash on delivery order
+
+
+router.get('/all-orders', async (req, res) => {
+  try {
+   
+    const allOrders = await Order.find({}).populate('userid');
+    
+    res.status(200).json({
+      status: true,
+      message: "Get successfully",
+      allorders: allOrders
+     
+    });
+  } catch (error) {
+    res.status(500).json({
+      status: false,
+      message: "Error while get all orders",
+      error: error.message
+    });
+  }
+});
+
+
+
 router.post('/cashondelivery_for_order', async (req, res) => {
   try {
     const { userid, items, totalamount, paymentstatus, paymentmethod, orderstatus } = req.body;
 
-    // Validate the presence of necessary data
     if (!userid || !items || !totalamount || !paymentstatus || !paymentmethod || !orderstatus) {
       return res.status(400).json({
         status: false,
@@ -88,11 +124,9 @@ router.post('/cashondelivery_for_order', async (req, res) => {
       });
     }
 
-    // Check if an order already exists for the given userId
     let existingOrder = await Order.findOne({ "userid": userid });
 
     if (existingOrder) {
-      // Update only the address in the existing order
       existingOrder.items = items; // Set the new address
       existingOrder.totalamount = totalamount; // Set the new address
       existingOrder.paymentstatus = paymentstatus; // Set the new address
@@ -116,7 +150,6 @@ router.post('/cashondelivery_for_order', async (req, res) => {
   }
 });
 
-// Handle Razorpay payment success callback
 router.post('/razorpay', async (req, res) => {
   try {
     const { paymentData } = req.body;
@@ -157,5 +190,98 @@ router.get("/orders/:userId", async (req, res) => {
     res.status(500).json({ message: "An error occurred while fetching orders." ,status:false});
   }
 });
+
+
+router.get("/get_order_by_orderid", async (req, res) => {
+  const { orderid } = req.query; 
+  try {
+    const userOrders = await Order.find({ _id: orderid })
+    .populate("shippingid", "address") 
+    .populate("paymentid").populate("userid")
+    if (!userOrders || userOrders.length === 0) {
+      return res.status(404).json({
+        message: "No orders found for this user.",
+        status: false,
+      });
+    }
+
+    res.status(200).json({
+      totalOrders: userOrders.length,
+      orders: userOrders,
+      status: true,
+    });
+  } catch (error) {
+    console.error("Error fetching orders:", error);
+    res.status(500).json({
+      message: "An error occurred while fetching orders.",
+      status: false,
+    });
+  }
+});
+
+
+
+
+router.get("/search",verifyTokenAndRole(["admin"]), async (req, res) => {
+  try {
+    const { searchTerm } = req.query;
+
+    if (!searchTerm) {
+      return res.status(400).json({ status: false, message: "Search term is required" });
+    }
+
+    const searchRegex = new RegExp(searchTerm, "i");
+    const query = [];
+
+    if (mongoose.Types.ObjectId.isValid(searchTerm)) {
+      query.push({ _id: searchTerm });
+    }
+
+    query.push({ orderstatus: searchRegex });
+
+    const users = await User.find({ name: searchRegex });
+    if (users.length > 0) {
+      const userIds = users.map((user) => user._id);
+      query.push({ userid: { $in: userIds } });
+    }
+
+    const orders = await Order.find({ $or: query }).populate("userid", "name");
+
+    res.status(200).json({ status: true, orders });
+  } catch (error) {
+    console.error("Error while searching orders:", error.message);
+    res.status(500).json({ status: false, message: "Internal Server Error" });
+  }
+});
+
+
+router.post('/update_status',verifyTokenAndRole(["admin"]), async (req, res) => {
+  const { orderId } = req.body
+  const { orderstatus } = req.body;  
+
+  if (!['pending', 'completed', 'processing', 'shipped', 'delivered', 'cancelled', 'returned'].includes(orderstatus)) {
+    return res.status(400).json({ message: 'Invalid order status' });
+  }
+
+  try {
+    const updatedOrder = await Order.findByIdAndUpdate(
+      orderId,
+      { orderstatus },  
+      { new: true } 
+    );
+
+    if (!updatedOrder) {
+      console.log("SSSSSSSSSSSSSSSSSSSSSSS:",)
+      return res.status(404).json({status:"false", message: 'Order not found' });
+    }
+
+    return res.status(200).json({status:"true", message: 'Order status updated successfully', order: updatedOrder });
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({status:"false", message: 'Internal server error' });
+  }
+});
+
+
 
 export default router;

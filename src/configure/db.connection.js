@@ -4,8 +4,8 @@ const pool = () => {
     mongoose.Promise = global.Promise;
     // mongodb+srv://admin:ADMIN@123@cluster0.csatt.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0
 
-    // const uri = "mongodb+srv://admin:Admin123@cluster0.csatt.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0"; // Force IPv4
-    const uri  = "mongodb+srv://ajaysikata:GU80tm41ONEGfXVO@cluster0.rmv36.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0"
+    const uri = "mongodb+srv://admin:Admin123@cluster0.csatt.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0"; // Force IPv4
+    // const uri  = "mongodb+srv://ajaysikata:GU80tm41ONEGfXVO@cluster0.rmv36.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0"
     //    const uri  = "mongodb://localhost:27017/backendforkabira?retryWrites=true&w=majority"
     const options = {
         useNewUrlParser: true,    // Nai URL parsing engine use karne ke liye.

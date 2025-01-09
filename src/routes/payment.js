@@ -1,5 +1,6 @@
 import express from 'express';
 import payment from '../models/payment.model.js';
+import Order from "../models/order.model.js";
 import verifyTokenAndRole from '../middlewares/auth.middleware.js';
 const router = express.Router();
 
@@ -43,7 +44,7 @@ router.post('/add_payment_status_by_order', async (req, res) => {
 });
 
 
-router.get('/total-sales',verifyTokenAndRole(["admin"]), async (req, res) => {
+router.get('/total-sales', async (req, res) => {
     try {
       const totalSales = await payment.aggregate([
         {
@@ -70,6 +71,39 @@ router.get('/total-sales',verifyTokenAndRole(["admin"]), async (req, res) => {
     }
   });
 
+
+  router.get("/total-sales/yearly",verifyTokenAndRole(["admin"]), async (req, res) => {
+    try {
+      const year = 2025; // You can pass this dynamically based on the user's request
+  
+      const totalSales = await Order.aggregate([
+        {
+          $match: {
+            createdAt: {
+              $gte: new Date(`${year}-01-01`), // Start date (January 1st of the year)
+              $lt: new Date(`${year + 1}-01-01`), // End date (January 1st of the next year)
+            },
+          },
+        },
+        {
+          $group: {
+            _id: null, // Group by null to sum up all orders
+            total: { $sum: "$totalamount" }, // Sum the totalamount of all orders
+          },
+        },
+      ]);
+  
+      if (totalSales.length > 0) {
+        return res.status(200).json({ status: true, totalSales: totalSales[0].total });
+      } else {
+        return res.status(200).json({ status: true, totalSales: 0 });
+      }
+    } catch (error) {
+      console.error("Error calculating yearly total sales:", error.message);
+      return res.status(500).json({ status: false, message: "Internal Server Error" });
+    }
+  });
+
  router.get('/get_all_payment',async function(req, res, next) {
       try{
       var paymenta = await payment.find({})  
@@ -78,27 +112,5 @@ router.get('/total-sales',verifyTokenAndRole(["admin"]), async (req, res) => {
           res.status(500).json({ status: false, message: "Server Error" })
         }
       });
-
-// router.get("/get_all_payment", async (req, res) => {
-//   try {
-//     console.log("YES, It IS WORKING.");
-
-//     res.status(200).json({
-//       status: true,
-//       message: "Route is working fine!",
-//     });
-//   } catch (error) {
-//     console.error("Error saving payment:", error);
-//     return res.status(500).json({
-//       status: false,
-//       error: error.message,
-//     });
-//   }
-// });
-
-
-
-
-
 
 export default router;
