@@ -174,32 +174,69 @@ router.get('/total-revenue_of_product',verifyTokenAndRole(["admin"]), async (req
   });
 
 
-router.get('/search', async (req, res) => {
-  const { searchTerm } = req.query;
-
-  if (!searchTerm) {
-    return res.status(400).json({ message: 'Search term is required.', status: false });
-  }
-
-  try {
-    const products = await Product.find({
-      $or: [
-        { name: { $regex: searchTerm, $options: 'i' } }, 
-        { description: { $regex: searchTerm, $options: 'i' } },
-      ],
-    });
-
-    if (products.length === 0) {
-      return res.status(404).json({ message: 'No products found.', status: false });
+  router.get('/search', async (req, res) => {
+    const { searchTerm } = req.query;
+  
+    if (!searchTerm) {
+      return res.status(400).json({ message: 'Search term is required.', status: false });
     }
-
-    res.status(200).json({ status: true, products });
-  } catch (error) {
-    console.error('Error during search:', error);
-    res.status(500).json({ message: 'An error occurred while searching for products.', status: false });
-  }
-});
-
+  
+    try {
+      const products = await Product.aggregate([
+        {
+          $lookup: {
+            from: "categories",
+            localField: "categoryid",
+            foreignField: "_id",
+            as: "categoryDetails",
+          },
+        },
+        { $unwind: "$categoryDetails" }, // Unwind to access category name for searching
+        {
+          $match: {
+            $or: [
+              { name: { $regex: searchTerm, $options: 'i' } }, // Search in product name
+              { description: { $regex: searchTerm, $options: 'i' } }, // Search in product description
+              { "categoryDetails.name": { $regex: searchTerm, $options: 'i' } } // Search in category name
+            ],
+          },
+        },
+        {
+          $project: {
+            _id: 1,
+            name: 1,
+            description: 1,
+            sku: 1,
+            stockquantity: 1,
+            regularprice: 1,
+            saleprice: 1,
+            tags: 1,
+            image: 1,
+            createdAt: 1,
+            updatedAt: 1,
+            categoryid: 1,
+            categoryDetails: {
+              _id: 1,
+              name: 1,
+              image: 1,
+              createdAt: 1,
+              updatedAt: 1,
+            },
+          },
+        },
+      ]);
+  
+      if (products.length === 0) {
+        return res.status(404).json({ message: 'No products found.', status: false });
+      }
+  
+      res.status(200).json({ status: true, products });
+    } catch (error) {
+      console.error('Error during search:', error);
+      res.status(500).json({ message: 'An error occurred while searching for products.', status: false });
+    }
+  });
+  
 
 router.get('/get_all_product_best_saller', async function(req, res, next) {
   try {
