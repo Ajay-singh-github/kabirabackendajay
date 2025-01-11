@@ -1,8 +1,11 @@
 import express from 'express';
 import Order from "../models/order.model.js";
 import User from "../models/user.model.js";
+import Product from "../models/product.model.js";
+
 import verifyTokenAndRole from '../middlewares/auth.middleware.js';
 import mongoose from "mongoose";
+
 const router = express.Router();
 
 router.post('/add_order', async (req, res) => {
@@ -127,11 +130,11 @@ router.post('/cashondelivery_for_order', async (req, res) => {
     let existingOrder = await Order.findOne({ "userid": userid });
 
     if (existingOrder) {
-      existingOrder.items = items; // Set the new address
-      existingOrder.totalamount = totalamount; // Set the new address
-      existingOrder.paymentstatus = paymentstatus; // Set the new address
-      existingOrder.paymentmode = "cash on delivery"; // Set the new address
-      existingOrder.orderstatus = orderstatus; // Set the new address
+      existingOrder.items = items; 
+      existingOrder.totalamount = totalamount; 
+      existingOrder.paymentstatus = paymentstatus; 
+      existingOrder.paymentmode = "cash on delivery"; 
+      existingOrder.orderstatus = orderstatus; 
 
       const updatedOrder = await existingOrder.save();
 
@@ -281,6 +284,67 @@ router.post('/update_status',verifyTokenAndRole(["admin"]), async (req, res) => 
     return res.status(500).json({status:"false", message: 'Internal server error' });
   }
 });
+
+
+
+router.get('/dashboard/best-sellers', async (req, res) => {
+  try {
+
+  } catch (error) {
+      
+  }
+});
+
+
+
+router.get('/dashboard/sales-data', async (req, res) => {
+  try {
+      const { timePeriod } = req.query; 
+
+      let groupByFormat;
+      if (timePeriod === 'weekly') {
+          groupByFormat = { week: { $isoWeek: '$createdAt' }, year: { $year: '$createdAt' } };
+      } else if (timePeriod === 'monthly') {
+          groupByFormat = { month: { $month: '$createdAt' }, year: { $year: '$createdAt' } };
+      } else if (timePeriod === 'yearly') {
+          groupByFormat = { year: { $year: '$createdAt' } };
+      } else {
+          return res.status(400).json({ success: false, message: 'Invalid timePeriod parameter.' });
+      }
+
+      const salesData = await Order.aggregate([
+          {
+              $group: {
+                  _id: groupByFormat,
+                  totalSales: { $sum: '$totalamount' }, 
+                  orderCount: { $sum: 1 }, 
+              },
+          },
+          {
+              $sort: { '_id.year': 1, '_id.month': 1, '_id.week': 1 }, 
+          },
+      ]);
+
+      const formattedData = salesData.map((data) => ({
+          period: `${data._id.year}-${data._id.month || data._id.week || ''}`.trim(),
+          totalSales: data.totalSales,
+          orderCount: data.orderCount,
+      }));
+
+      res.status(200).json({
+          success: true,
+          data: formattedData,
+      });
+  } catch (error) {
+      console.error('Error fetching sales data:', error);
+      res.status(500).json({
+          success: false,
+          message: 'Something went wrong while fetching sales data.',
+      });
+  }
+});
+
+
 
 
 

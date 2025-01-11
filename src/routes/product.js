@@ -200,4 +200,50 @@ router.get('/search', async (req, res) => {
   }
 });
 
+
+router.get('/get_all_product_best_saller', async function(req, res, next) {
+  try {
+    Product.aggregate(
+      [
+        {
+          $lookup: {
+            from: "categories",
+            localField: "categoryid",
+            foreignField: "_id",
+            as: "categoryDetails",
+          },
+        },
+        { $unwind: "$categoryDetails" },
+        {
+          $project: {
+            _id: 1,
+            name: 1,
+            description: 1,
+            sku: 1,
+            stockquantity: 1,
+            regularprice: 1,
+            saleprice: 1,
+            tags: 1,
+            image: 1,
+            createdAt: 1,
+            updatedAt: 1,
+            categoryid: 1,
+            categoryDetails: {
+              _id: 1,
+              name: 1,
+            },
+          },
+        },
+        { $limit: 3 }, 
+      ]
+    ).then((result) => {
+      res.status(200).json({ status: true, message: "Fetched Successfully", data: result });
+    }).catch((e) => {
+      res.status(200).json({ status: false, message: "Database Error", data: e });
+    });
+  } catch (error) {
+    res.status(500).json({ status: false, message: "Server Error", data: error });
+  }
+});
+
 export default router;

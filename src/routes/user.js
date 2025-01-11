@@ -203,6 +203,40 @@ router.post('/create_user', async (req, res) => {
         .json({ status: false, message: "Server error while fetching users." });
     }
   });
+
+
+  router.post('/change-password',verifyTokenAndRole(["admin","user"]), async (req, res) => {
+    const { currentPassword, newPassword } = req.body;
+  
+    if (!currentPassword || !newPassword) {
+      return res.status(400).json({ status: false, message: "Please provide both current and new passwords" });
+    }
+    try {
+      const userId = req.data.id; 
+      const user = await User.findById(userId);
+  
+      if (!user) {
+        return res.status(404).json({ status: false, message: "User not found" });
+      }
+  
+      const isMatch = await bcryptController.comparePassword(currentPassword, user.password);
+      
+      if (!isMatch) {
+        return res.status(400).json({ status: false, message: "Current password is incorrect" });
+      }
+  
+      const hashedNewPassword = await bcryptController.hashPassword(newPassword, 10);
+  
+      user.password = hashedNewPassword;
+      await user.save();
+  
+      res.status(200).json({ status: true, message: "Password changed successfully" });
+  
+    } catch (error) {
+      console.log("PASSword CHANGE:",error)
+      res.status(500).json({ status: false, message: "Server error", error: error.message });
+    }
+  });
   
   
   
