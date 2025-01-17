@@ -8,7 +8,7 @@ import mongoose from "mongoose";
 
 const router = express.Router();
 
-router.post('/add_order', async (req, res) => {
+router.post('/add_order',verifyTokenAndRole(["admin","user"]), async (req, res) => {
   try {
     const { userid , items , totalamount , orderstatus ,shippingid} = req.body;
 
@@ -68,7 +68,7 @@ router.post('/add_order', async (req, res) => {
   }
 });
 //verifyTokenAndRole(["admin"])
-router.get('/total-orders', async (req, res) => {
+router.get('/total-orders',verifyTokenAndRole(["admin"]), async (req, res) => {
   try {
    
     const totalOrdersCount = await Order.countDocuments();
@@ -94,7 +94,7 @@ router.get('/total-orders', async (req, res) => {
 
 
 
-router.get('/all-orders', async (req, res) => {
+router.get('/all-orders',verifyTokenAndRole(["admin","user"]), async (req, res) => {
   try {
    
     const allOrders = await Order.find({}).populate('userid');
@@ -173,29 +173,51 @@ router.post('/razorpay', async (req, res) => {
 });
 
 
-router.get("/orders/:userId", async (req, res) => {
-  const { userId } = req.params;
-
+router.post("/orders",verifyTokenAndRole(["admin","user"]), async (req, res) => {
+  const { userId } = req.body;
   try {
-    const userOrders = await Order.find({ "userid": userId })
-    .populate("shippingid", "address");
-    if (userOrders.length === 0) {
-      return res.status(404).json({ message: "No orders found for this user." ,status:false});
-    }
+
+    const orders = await Order.aggregate([
+      { $match: { userid: new mongoose.Types.ObjectId(userId) } },
+      {
+        $lookup: {
+          from: "payments",
+          localField: "_id",
+          foreignField: "orderid",
+          as: "paymentDetails",
+        },
+      },
+      {
+        $addFields: {
+          paymentStatus: {
+            $ifNull: [{ $arrayElemAt: ["$paymentDetails.paymentstatus", 0] }, "pending"],
+          },
+        },
+      },
+      {
+        $project: {
+          paymentDetails: 0,
+        },
+      },
+    ]);
 
     res.status(200).json({
-      totalOrders: userOrders.length,
-      orders: userOrders,
-      status:true
+      status: true,
+      message: "Orders fetched successfully",
+      orders,
     });
   } catch (error) {
     console.error("Error fetching orders:", error);
-    res.status(500).json({ message: "An error occurred while fetching orders." ,status:false});
+    res.status(500).json({
+      status: false,
+      message: "Server error",
+    });
   }
+
 });
 
 
-router.post('/get_orders_by_userid', async (req, res) => {
+router.post('/get_orders_by_userid',verifyTokenAndRole(["admin","user"]), async (req, res) => {
   const { userid } = req.body;
 
   try {
@@ -290,17 +312,17 @@ router.post('/update_status',verifyTokenAndRole(["admin"]), async (req, res) => 
 
 
 
-router.get('/dashboard/best-sellers', async (req, res) => {
-  try {
+// router.get('/dashboard/best-sellers', async (req, res) => {
+//   try {
 
-  } catch (error) {
+//   } catch (error) {
       
-  }
-});
+//   }
+// });
 
 
 
-router.get('/dashboard/sales-data', async (req, res) => {
+router.get('/dashboard/sales-data',verifyTokenAndRole(["admin"]), async (req, res) => {
   try {
       const { timePeriod } = req.query; 
 
@@ -344,6 +366,31 @@ router.get('/dashboard/sales-data', async (req, res) => {
           success: false,
           message: 'Something went wrong while fetching sales data.',
       });
+  }
+});
+
+
+router.get("/get_order_by_orderid", async (req, res) => {
+  try {
+    const { orderid } = req.query;
+
+    if (!orderid) {
+      return res.status(400).json({ status: false, message: "Order ID is required" });
+    }
+
+    const order = await Order.findOne({ _id:new mongoose.Types.ObjectId(orderid) }).populate("shippingid").populate("userid"); // Assuming `shippingid` is populated
+
+    if (!order) {
+      return res.status(404).json({ status: false, message: "Order not found" });
+    }
+
+    return res.status(200).json({
+      status: true,
+      orders: [order], 
+    });
+  } catch (error) {
+    console.error("Error fetching order by ID:", error);
+    return res.status(500).json({ status: false, message: "Server error", error: error.message });
   }
 });
 

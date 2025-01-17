@@ -52,8 +52,8 @@ router.post("/add_product_in_cart", async (req, res) => {
 });
 
 
-router.delete("/remove-cart/:userId", async (req, res) => {
-  const { userid } = req.params;
+router.post("/remove-cart", async (req, res) => {
+  const { userid } = req.body;
 
   try {
     const result = await Cart.deleteMany({ "userid":userid });

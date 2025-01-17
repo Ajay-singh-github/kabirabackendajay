@@ -97,4 +97,29 @@ router.get('/total-sales', async (req, res) => {
         }
       });
 
+
+      router.get("/get_payment_by_orderid", async (req, res) => {
+        try {
+          const { orderid } = req.query;
+      
+          if (!orderid) {
+            return res.status(400).json({ status: false, message: "Order ID is required" });
+          }
+      
+          const Payment = await payment.findOne({ orderid: orderid }).populate("userid");
+      
+          if (!Payment) {
+            return res.status(404).json({ status: false, message: "Payment details not found for this order" });
+          }
+      
+          return res.status(200).json({
+            status: true,
+            Payment,
+          });
+        } catch (error) {
+          console.error("Error fetching payment details by order ID:", error);
+          return res.status(500).json({ status: false, message: "Server error", error: error.message });
+        }
+      });      
+
 export default router;

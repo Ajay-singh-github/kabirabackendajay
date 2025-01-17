@@ -76,7 +76,7 @@ router.get('/get_all_product', async function (req, res, next) {
   }
 });
 
-router.get("/get_orders_by_userid/:userid", async (req, res) => {
+router.get("/get_orders_by_userid/:userid",verifyTokenAndRole(["admin","user"]) ,async (req, res) => {
   try {
     const { userid } = req.params;
 
@@ -276,7 +276,7 @@ router.get('/search', async (req, res) => {
 });
 
 
-router.get('/get_all_product_best_saller', async function (req, res, next) {
+router.get('/get_all_product_best_saller',verifyTokenAndRole(["admin"]), async function (req, res, next) {
   try {
     Product.aggregate(
       [

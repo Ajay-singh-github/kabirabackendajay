@@ -3,7 +3,6 @@ var router = express.Router();
 import jwt from 'jsonwebtoken';
 import bcryptController from "../controllers/bcryptController.js";
 import User from "../models/user.model.js";
-import verifyTokenAndRole from '../middlewares/auth.middleware.js';
 
 router.post('/admin_login', async (req, res) => {
     try {

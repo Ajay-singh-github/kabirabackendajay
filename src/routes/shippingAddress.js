@@ -1,8 +1,9 @@
 import express from 'express';
 import shippingaddress from '../models/shippingaddress.model.js';
+import verifyTokenAndRole from '../middlewares/auth.middleware.js';
 const router = express.Router();
 
-router.post('/add_address_for_order', async (req, res) => {
+router.post('/add_address_for_order',verifyTokenAndRole(["admin","user"]), async (req, res) => {
   try {
     const { userid, address } = req.body;
 
@@ -32,6 +33,7 @@ router.post('/add_address_for_order', async (req, res) => {
         return res.status(200).json({
           status: true,
           message: 'Address saved and order created successfully!',
+          data:savedOrder
         });
       }
 
@@ -50,7 +52,7 @@ router.post('/add_address_for_order', async (req, res) => {
 });
 
 
-router.post('/fetch_shipping_address_by_userid', async (req, res) => {
+router.post('/fetch_shipping_address_by_userid',verifyTokenAndRole(["admin","user"]), async (req, res) => {
     try {
       const { userid } = req.body;
   

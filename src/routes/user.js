@@ -66,7 +66,7 @@ router.post('/create_user', async (req, res) => {
 
 
 
-  router.get('/get_all_user', async function (req, res, next) {
+  router.get('/get_all_user',verifyTokenAndRole(["admin"]), async function (req, res, next) {
     try {
       var user = await User.find()
       res.status(200).json({ status: true, message: "Get Data Successfully", data: user })
@@ -102,7 +102,7 @@ router.post('/create_user', async (req, res) => {
   
 
 
-  router.put('/update_user', async function (req, res, next) {
+  router.put('/update_user',verifyTokenAndRole(["admin","user"]), async function (req, res, next) {
     try {
       const { userid } = req.body
       const updateData = req.body
@@ -134,7 +134,7 @@ router.post('/create_user', async (req, res) => {
   });
 
 
-  router.delete('/delete_user', async function (req, res, next) {
+  router.delete('/delete_user',verifyTokenAndRole(["admin","user"]), async function (req, res, next) {
     try {
       const { userid } = req.body
   
@@ -237,6 +237,10 @@ router.post('/create_user', async (req, res) => {
       res.status(500).json({ status: false, message: "Server error", error: error.message });
     }
   });
+
+
+
+ 
   
   
   
