@@ -7,7 +7,9 @@ var paymentSchema = mongoose.Schema(
     paymentmode:{'type':String},
     paymentstatus:{'type': String,enum: ['pending', 'success', 'failed'],default:"pending"},
     paymentamount:{"type":Number},
-    transactiondetails:{"type":String}
+    transactiondetails:{"type":String},
+     orderid:{type:mongoose.Schema.Types.ObjectId,ref:"order",required:true},
+
   },
   { timestamps: true }
 );

@@ -4,44 +4,28 @@ import Order from "../models/order.model.js";
 import verifyTokenAndRole from '../middlewares/auth.middleware.js';
 const router = express.Router();
 
-router.post('/add_payment_status_by_order', async (req, res) => {
+router.post("/add_payments", async (req, res) => {
   try {
-    const { userid, paymentmode , paymentamount , transactiondetails,paymentstatus } = req.body;
+    const { userid, paymentmode, paymentstatus, paymentamount, transactiondetails, orderid } = req.body;
 
-    if (!userid || !paymentmode || !paymentamount) {
-      return res.status(400).json({ status: false, message: "All Fields Are Required to further Process." });
-    }
-    
-      const newPayment = new payment({
-        userid: userid,
-        paymentmode:paymentmode,
-        paymentamount:paymentamount,
-        paymentstatus:paymentstatus,
-        transactiondetails:transactiondetails
-      });
-
-      const savedPayment = await newPayment.save();
-      if (savedPayment) {
-        return res.status(200).json({
-          status: true,
-          data:savedPayment,
-          message: 'Payment saved successfully!',
-        });
-      }
-
-      return res.status(500).json({
-        status: false,
-        message: 'Failed to save payment.',
-      });
-   
-  } catch (error) {
-    console.error('Error saving payment:', error);
-    return res.status(500).json({
-      status: false,
-      error: error.message,
+    const newPayment = new payment({
+      userid,
+      paymentmode,
+      paymentstatus,
+      paymentamount,
+      transactiondetails,
+      orderid,
     });
+
+    await newPayment.save();
+
+    res.status(201).json({ message: "Payment saved successfully" });
+  } catch (error) {
+    console.error("Error saving payment:", error);
+    res.status(500).json({ message: "Failed to save payment", error });
   }
 });
+
 
 
 router.get('/total-sales', async (req, res) => {

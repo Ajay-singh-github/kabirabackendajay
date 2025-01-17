@@ -3,82 +3,120 @@ var router = express.Router();
 import upload from "../middlewares/multer.midddleware.js";
 import Product from "../models/product.model.js";
 import verifyTokenAndRole from '../middlewares/auth.middleware.js';
+import UploadOnCloudinary from '../controllers/cloudinary.js';
 
-router.post('/add_new_product',verifyTokenAndRole(["admin"]), upload.any(), async (req, res) => {
+router.post('/add_new_product', verifyTokenAndRole(["admin"]), upload.any(), async (req, res) => {
   try {
-      const fileNames = req.files.map(file => file.filename);
-      const body = { ...req.body, image: fileNames };
-      const product = new Product(body);
-      const saveData = await product.save();
+    const uploadedImages = [];
 
-      if (saveData) {
-          res.status(200).json({ status: true, message: "Product added successfully", data: saveData });
-      } else {
-          res.status(400).json({ status: false, message: "Database error" });
-      }
+    for (const file of req.files) {
+      const result = await UploadOnCloudinary(file.path);
+
+      uploadedImages.push(result);
+    }
+    console.log("DDDDDDDDD", uploadedImages)
+    const body = { ...req.body, image: uploadedImages };
+    const product = new Product(body);
+    const saveData = await product.save();
+
+    if (saveData) {
+      res.status(200).json({ status: true, message: "Product added successfully", data: saveData });
+    } else {
+      res.status(400).json({ status: false, message: "Database error" });
+    }
   } catch (error) {
-    console.log("55555555555555555555555555:",error)
-      res.status(500).json({ status: false, message: "Server error", error: error.message });
+    console.error("Error while uploading images:", error);
+    res.status(500).json({ status: false, message: "Server error", error: error.message });
   }
 });
 
-router.get('/get_all_product',async function(req, res, next) {
-    try {
-     Product.aggregate(
-          [
-            {
-                $lookup: {
-                  from: "categories",
-                  localField: "categoryid",
-                  foreignField: "_id",
-                  as: "categoryDetails",
-                },
-              } 
-            ],
-            { $unwind: "$categoryDetails" },
-            {
-                $project: {
-                  _id: 1,
-                  name: 1,
-                  description: 1,
-                  sku: 1,
-                  stockquantity: 1,
-                  regularprice: 1,
-                  saleprice: 1,
-                  tags: 1,
-                  image: 1,
-                  createdAt: 1,
-                  updatedAt: 1,
-                  categoryid: 1,
+router.get('/get_all_product', async function (req, res, next) {
+  try {
+    Product.aggregate(
+      [
+        {
+          $lookup: {
+            from: "categories",
+            localField: "categoryid",
+            foreignField: "_id",
+            as: "categoryDetails",
+          },
+        }
+      ],
+      { $unwind: "$categoryDetails" },
+      {
+        $project: {
+          _id: 1,
+          name: 1,
+          description: 1,
+          sku: 1,
+          stockquantity: 1,
+          regularprice: 1,
+          saleprice: 1,
+          tags: 1,
+          image: 1,
+          createdAt: 1,
+          updatedAt: 1,
+          categoryid: 1,
 
-                  categoryDetails: {
-                    _id: 1,
-                    name: 1,
-                  },
-                },
-              },
-          ).then((result) => {
-            res.status(200).json({ status: true, message: "Fetched Successfully", data: result })
-      
-          }).catch((e) => {
-            res.status(200).json({ status: false, message: "Database Error", data: e })
-          })
-      } catch {
-    
-      }
+          categoryDetails: {
+            _id: 1,
+            name: 1,
+          },
+        },
+      },
+    ).then((result) => {
+      res.status(200).json({ status: true, message: "Fetched Successfully", data: result })
+
+    }).catch((e) => {
+      res.status(200).json({ status: false, message: "Database Error", data: e })
+    })
+  } catch {
+
+  }
+});
+
+router.get("/get_orders_by_userid/:userid", async (req, res) => {
+  try {
+    const { userid } = req.params;
+
+    // Find all orders by userid
+    const userOrders = await Order.find({ userid })
+      .populate("shippingid", "address") // Populate shipping details
+      .populate("userid", "name email"); // Populate user details (name and email)
+
+    if (!userOrders || userOrders.length === 0) {
+      return res.status(404).json({
+        status: false,
+        message: "No orders found for this user.",
+      });
+    }
+
+    return res.status(200).json({
+      status: true,
+      message: "Orders fetched successfully.",
+      totalOrders: userOrders.length,
+      orders: userOrders,
     });
-
-
-router.post('/get_specific_products_by_category',async function(req, res, next) {
-    try{
-    var {categoryid} = req.body
-    var product = await Product.find({categoryid:categoryid})  
-    res.status(200).json({ status: true, message: "Get Data Successfully",data:product })
-    }catch(e){
-        res.status(500).json({ status: false, message: "Server Error" })
-
-      }
+  } catch (error) {
+    console.error("Error fetching orders by user ID:", error);
+    return res.status(500).json({
+      status: false,
+      message: "Server error while fetching orders.",
     });
+  }
+});
+
+router.post('/get_specific_products_by_category', async function (req, res, next) {
+  try {
+    var { categoryid } = req.body
+    var product = await Product.find({ categoryid: categoryid })
+    res.status(200).json({ status: true, message: "Get Data Successfully", data: product })
+  } catch (e) {
+    res.status(500).json({ status: false, message: "Server Error" })
+
+  }
+});
 
 router.post('/get_specific_product', async function (req, res, next) {
   try {
@@ -92,11 +130,11 @@ router.post('/get_specific_product', async function (req, res, next) {
 });
 
 
-router.put('/update_product',verifyTokenAndRole(["admin"]),upload.any(), async function (req, res, next) {
+router.put('/update_product', verifyTokenAndRole(["admin"]), upload.any(), async function (req, res, next) {
   try {
     const fileNames = req.files.map(file => file.filename);
     const { productid } = req.body
-    const updateData = {...req.body,"image": fileNames}
+    const updateData = { ...req.body, "image": fileNames }
     const updatedProduct = await Product.findOneAndUpdate(
       { _id: productid },          // Search condition
       { $set: updateData },      // Updated data
@@ -122,7 +160,7 @@ router.put('/update_product',verifyTokenAndRole(["admin"]),upload.any(), async f
 
 });
 
-router.delete('/delete_product',verifyTokenAndRole(["admin"]), async function (req, res, next) {
+router.delete('/delete_product', verifyTokenAndRole(["admin"]), async function (req, res, next) {
   try {
     const { productid } = req.body
 
@@ -133,7 +171,7 @@ router.delete('/delete_product',verifyTokenAndRole(["admin"]), async function (r
         message: "User not found"
       });
     }
-    
+
     res.status(200).json({
       status: true,
       message: "Product deleted successfully",
@@ -146,99 +184,99 @@ router.delete('/delete_product',verifyTokenAndRole(["admin"]), async function (r
 });
 
 
-router.get('/total-revenue_of_product',verifyTokenAndRole(["admin"]), async (req, res) => {
-    try {
-      const totalSales = await Product.aggregate([
-        {
-          $group: {
-            _id: null, // No grouping by a specific field, so we keep it null
-            totalAmount: { $sum: "$regularprice" } // Sum the paymentamount field
-          }
+router.get('/total-revenue_of_product', verifyTokenAndRole(["admin"]), async (req, res) => {
+  try {
+    const totalSales = await Product.aggregate([
+      {
+        $group: {
+          _id: null, // No grouping by a specific field, so we keep it null
+          totalAmount: { $sum: "$regularprice" } // Sum the paymentamount field
         }
-      ]);
-  
-      const totalAmount = totalSales.length > 0 ? totalSales[0].totalAmount : 0;
-  
-      res.status(200).json({
-        status: true,
-        message: "Total Revenue calculated successfully",
-        totalRevenue: totalAmount
-      });
-    } catch (error) {
-      res.status(500).json({
-        status: false,
-        message: "Error calculating total sales",
-        error: error.message
-      });
-    }
-  });
+      }
+    ]);
+
+    const totalAmount = totalSales.length > 0 ? totalSales[0].totalAmount : 0;
+
+    res.status(200).json({
+      status: true,
+      message: "Total Revenue calculated successfully",
+      totalRevenue: totalAmount
+    });
+  } catch (error) {
+    res.status(500).json({
+      status: false,
+      message: "Error calculating total sales",
+      error: error.message
+    });
+  }
+});
 
 
-  router.get('/search', async (req, res) => {
-    const { searchTerm } = req.query;
-  
-    if (!searchTerm) {
-      return res.status(400).json({ message: 'Search term is required.', status: false });
-    }
-  
-    try {
-      const products = await Product.aggregate([
-        {
-          $lookup: {
-            from: "categories",
-            localField: "categoryid",
-            foreignField: "_id",
-            as: "categoryDetails",
-          },
+router.get('/search', async (req, res) => {
+  const { searchTerm } = req.query;
+
+  if (!searchTerm) {
+    return res.status(400).json({ message: 'Search term is required.', status: false });
+  }
+
+  try {
+    const products = await Product.aggregate([
+      {
+        $lookup: {
+          from: "categories",
+          localField: "categoryid",
+          foreignField: "_id",
+          as: "categoryDetails",
         },
-        { $unwind: "$categoryDetails" }, // Unwind to access category name for searching
-        {
-          $match: {
-            $or: [
-              { name: { $regex: searchTerm, $options: 'i' } }, // Search in product name
-              { description: { $regex: searchTerm, $options: 'i' } }, // Search in product description
-              { "categoryDetails.name": { $regex: searchTerm, $options: 'i' } } // Search in category name
-            ],
-          },
+      },
+      { $unwind: "$categoryDetails" }, // Unwind to access category name for searching
+      {
+        $match: {
+          $or: [
+            { name: { $regex: searchTerm, $options: 'i' } }, // Search in product name
+            { description: { $regex: searchTerm, $options: 'i' } }, // Search in product description
+            { "categoryDetails.name": { $regex: searchTerm, $options: 'i' } } // Search in category name
+          ],
         },
-        {
-          $project: {
+      },
+      {
+        $project: {
+          _id: 1,
+          name: 1,
+          description: 1,
+          sku: 1,
+          stockquantity: 1,
+          regularprice: 1,
+          saleprice: 1,
+          tags: 1,
+          image: 1,
+          createdAt: 1,
+          updatedAt: 1,
+          categoryid: 1,
+          categoryDetails: {
             _id: 1,
             name: 1,
-            description: 1,
-            sku: 1,
-            stockquantity: 1,
-            regularprice: 1,
-            saleprice: 1,
-            tags: 1,
             image: 1,
             createdAt: 1,
             updatedAt: 1,
-            categoryid: 1,
-            categoryDetails: {
-              _id: 1,
-              name: 1,
-              image: 1,
-              createdAt: 1,
-              updatedAt: 1,
-            },
           },
         },
-      ]);
-  
-      if (products.length === 0) {
-        return res.status(404).json({ message: 'No products found.', status: false });
-      }
-  
-      res.status(200).json({ status: true, products });
-    } catch (error) {
-      console.error('Error during search:', error);
-      res.status(500).json({ message: 'An error occurred while searching for products.', status: false });
-    }
-  });
-  
+      },
+    ]);
 
-router.get('/get_all_product_best_saller', async function(req, res, next) {
+    if (products.length === 0) {
+      return res.status(404).json({ message: 'No products found.', status: false });
+    }
+
+    res.status(200).json({ status: true, products });
+  } catch (error) {
+    console.error('Error during search:', error);
+    res.status(500).json({ message: 'An error occurred while searching for products.', status: false });
+  }
+});
+
+
+router.get('/get_all_product_best_saller', async function (req, res, next) {
   try {
     Product.aggregate(
       [
@@ -271,7 +309,7 @@ router.get('/get_all_product_best_saller', async function(req, res, next) {
             },
           },
         },
-        { $limit: 3 }, 
+        { $limit: 3 },
       ]
     ).then((result) => {
       res.status(200).json({ status: true, message: "Fetched Successfully", data: result });

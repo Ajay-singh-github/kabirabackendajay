@@ -10,7 +10,7 @@ const router = express.Router();
 
 router.post('/add_order', async (req, res) => {
   try {
-    const { userid , items , totalamount , orderstatus ,shippingid,paymentid} = req.body;
+    const { userid , items , totalamount , orderstatus ,shippingid} = req.body;
 
     if (!userid  || !totalamount || !orderstatus) {
       return res.status(400).json({ status: false, message: "all fields are required." });
@@ -38,7 +38,7 @@ router.post('/add_order', async (req, res) => {
         totalamount:totalamount,
         orderstatus:orderstatus,
         shippingid:shippingid,
-        paymentid:paymentid
+        
       });
 
       const savedOrder = await newOrder.save();
@@ -67,8 +67,8 @@ router.post('/add_order', async (req, res) => {
     });
   }
 });
-
-router.get('/total-orders',verifyTokenAndRole(["admin"]), async (req, res) => {
+//verifyTokenAndRole(["admin"])
+router.get('/total-orders', async (req, res) => {
   try {
    
     const totalOrdersCount = await Order.countDocuments();
@@ -195,15 +195,17 @@ router.get("/orders/:userId", async (req, res) => {
 });
 
 
-router.get("/get_order_by_orderid", async (req, res) => {
-  const { orderid } = req.query; 
+router.post('/get_orders_by_userid', async (req, res) => {
+  const { userid } = req.body;
+
   try {
-    const userOrders = await Order.find({ _id: orderid })
-    .populate("shippingid", "address") 
-    .populate("paymentid").populate("userid")
+    const userOrders = await Order.find({ userid })
+      .populate('shippingid', 'address') // Populate the shipping address
+      .populate('userid', 'name email'); // Populate user info like name and email
+
     if (!userOrders || userOrders.length === 0) {
       return res.status(404).json({
-        message: "No orders found for this user.",
+        message: 'No orders found for this user.',
         status: false,
       });
     }
@@ -214,13 +216,14 @@ router.get("/get_order_by_orderid", async (req, res) => {
       status: true,
     });
   } catch (error) {
-    console.error("Error fetching orders:", error);
+    console.error('Error fetching orders:', error);
     res.status(500).json({
-      message: "An error occurred while fetching orders.",
+      message: 'An error occurred while fetching orders.',
       status: false,
     });
   }
 });
+
 
 
 
