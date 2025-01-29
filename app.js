@@ -3,6 +3,9 @@ import path from 'path';
 import cookieParser from "cookie-parser";
 import logger from 'morgan';
 import cors from 'cors';
+import dotenv from 'dotenv';
+
+dotenv.config();
 
 // Routers
 import database from "./src/configure/db.connection.js";

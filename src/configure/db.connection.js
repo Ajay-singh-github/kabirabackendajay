@@ -4,7 +4,9 @@ const pool = () => {
     // mongodb+srv://admin:ADMIN@123@cluster0.csatt.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0
 
     // const uri = "mongodb+srv://admin:Admin123@cluster0.csatt.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0"; // Force IPv4
-    const uri  = "mongodb+srv://ajaysikata:GU80tm41ONEGfXVO@cluster0.rmv36.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0"
+    // const uri  = "mongodb+srv://ajaysikata:GU80tm41ONEGfXVO@cluster0.rmv36.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0"
+    // const uri  = "mongodb+srv://baghelakshay945:<Baghelakshay@123>@cluster0.1cjix.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0"
+
     //    const uri  = "mongodb://localhost:27017/backendforkabira?retryWrites=true&w=majority"
     const options = {
         useNewUrlParser: true,    // Nai URL parsing engine use karne ke liye.
@@ -13,7 +15,7 @@ const pool = () => {
     };
 
     mongoose
-        .connect(uri, options)
+        .connect(process.env.MongoDB_URL, options)
         .then(() => console.log("MongoDB connected successfully"))
         .catch((err) => console.error("MongoDB connection error:", err));
 };
